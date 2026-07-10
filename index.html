@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>5-Minute Summary Generator</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
+    <style>
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBgYU3Gv3itIh70wPfcQIA6epqPo12RWs8",
             authDomain: "miniutes-summary-generator.firebaseapp.com",
@@ -26,61 +26,74 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
 
-        // UI Logic
-        window.handleLogin = () => signInWithPopup(auth, provider);
+        // Auth Logic
+        window.handleAuth = async (isSignup) => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            try {
+                if (isSignup) await createUserWithEmailAndPassword(auth, email, pass);
+                else await signInWithEmailAndPassword(auth, email, pass);
+                alert("Success!");
+            } catch (e) { alert(e.message); }
+        };
+
         window.handleLogout = () => signOut(auth);
+
+        onAuthStateChanged(auth, (user) => {
+            const authPanel = document.getElementById('authPanel');
+            if (user) {
+                authPanel.innerHTML = `<p class="text-xs mb-2">Logged in as: ${user.email}</p>
+                                       <button onclick="handleLogout()" class="w-full bg-red-600/80 p-2 rounded text-sm">Logout</button>`;
+            }
+        });
 
         window.generateSummary = async () => {
             const key = document.getElementById('apiKey').value;
             const text = document.getElementById('textInput').value;
-            if(!key) return alert("API Key দিন!");
+            if(!key) return alert("API Key ইম্পুট করুন!");
             
-            document.getElementById('output').innerHTML = "জেনারেট হচ্ছে...";
-            const genAI = new GoogleGenerativeAI(key);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = new GoogleGenerativeAI(key).getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await model.generateContent(`Summarize this: ${text}`);
             const response = await result.response.text();
             
             document.getElementById('output').innerHTML = response.replace(/\n/g, '<br>');
             
-            // Firestore-এ সেভ
-            const user = auth.currentUser;
-            if(user) {
+            if(auth.currentUser) {
                 await addDoc(collection(db, "summaries"), {
-                    userId: user.uid,
-                    text: response,
+                    userId: auth.currentUser.uid,
+                    summary: response,
                     timestamp: serverTimestamp()
                 });
             }
         };
     </script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-5">
+<body class="bg-[#0a0a0f] text-gray-200 min-h-screen flex p-4">
 
-    <div class="max-w-4xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
-        <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">5-Minute Summary Generator</h1>
-        
-        <!-- API Key Input -->
-        <input type="password" id="apiKey" placeholder="Gemini API Key দিন" 
-               class="w-full p-3 mb-4 bg-gray-700 rounded border border-gray-600 outline-none">
-        
-        <!-- Textarea -->
-        <textarea id="textInput" rows="6" placeholder="এখানে টেক্সট পেস্ট করুন..." 
-                  class="w-full p-4 mb-4 bg-gray-900 rounded border border-gray-700 outline-none"></textarea>
-        
-        <!-- Action Buttons -->
-        <div class="flex gap-4">
-            <button onclick="handleLogin()" class="bg-blue-600 px-6 py-2 rounded">Google Login</button>
-            <button onclick="generateSummary()" class="bg-green-600 px-6 py-2 rounded">জেনারেট করুন</button>
+    <!-- Sidebar -->
+    <aside class="w-80 glass p-6 rounded-2xl mr-4 flex flex-col">
+        <h2 class="text-xl font-bold mb-6">Auth Panel</h2>
+        <div id="authPanel" class="space-y-3">
+            <input type="email" id="email" placeholder="Email" class="w-full p-2 rounded bg-white/5 border border-white/10 outline-none">
+            <input type="password" id="password" placeholder="Password" class="w-full p-2 rounded bg-white/5 border border-white/10 outline-none">
+            <div class="flex gap-2">
+                <button onclick="handleAuth(false)" class="flex-1 bg-blue-600/80 p-2 rounded text-sm">Login</button>
+                <button onclick="handleAuth(true)" class="flex-1 bg-green-600/80 p-2 rounded text-sm">Sign Up</button>
+            </div>
         </div>
+        <div class="mt-8 pt-8 border-t border-white/10">
+            <input type="password" id="apiKey" placeholder="Gemini API Key" class="w-full p-2 rounded bg-black/40 border border-white/10 text-sm">
+        </div>
+    </aside>
 
-        <!-- Output -->
-        <div id="output" class="mt-8 p-6 bg-black rounded-lg border border-gray-700 leading-relaxed">
-            সারসংক্ষেপ এখানে প্রদর্শিত হবে...
-        </div>
-    </div>
+    <!-- Main -->
+    <main class="flex-1 glass p-8 rounded-2xl">
+        <h1 class="text-2xl font-bold mb-6">5-Minute Summary Generator</h1>
+        <textarea id="textInput" rows="8" class="w-full p-4 rounded-xl bg-white/5 border border-white/10 mb-4 outline-none" placeholder="Paste text here..."></textarea>
+        <button onclick="generateSummary()" class="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl transition">Generate Summary</button>
+        <div id="output" class="mt-8 p-6 bg-black/40 rounded-xl border border-white/10 min-h-[100px]"></div>
+    </main>
 
 </body>
 </html>
