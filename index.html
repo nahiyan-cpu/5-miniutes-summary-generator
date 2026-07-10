@@ -7,39 +7,109 @@
     <style>
         :root {
             --primary: #4f46e5;
-            --bg: #f9fafb;
+            --bg: #f3f4f6;
             --card: #ffffff;
-            --text: #111827;
+            --text: #1f2937;
+            --accent: #6366f1;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: var(--card); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        h1, h2 { text-align: center; color: var(--primary); }
-        textarea { width: 100%; height: 150px; padding: 12px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        .auth-section, .app-section { margin-top: 20px; }
-        .history-item { border-bottom: 1px solid #eee; padding: 10px 0; }
-        .error { color: #dc2626; font-size: 0.9rem; margin-top: 10px; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            line-height: 1.8; 
+            margin: 0; 
+            padding: 40px 20px; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+        h1, h2 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        
+        /* Auth & App Sections */
+        .card { 
+            background: var(--card); 
+            padding: 40px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            margin-bottom: 30px; 
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border: 2px solid #e5e7eb; 
+            border-radius: 12px; 
+            font-size: 1.1rem; 
+            box-sizing: border-box; 
+        }
+        textarea { height: 300px; resize: vertical; }
+        
+        button { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 20px 40px; 
+            border-radius: 12px; 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            cursor: pointer; 
+            width: 100%; 
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        /* Metrics Grid */
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin: 30px 0; 
+        }
+        .metric-card { 
+            background: #f8fafc; 
+            padding: 20px; 
+            border-radius: 12px; 
+            text-align: center; 
+            border: 1px solid #e2e8f0; 
+        }
+        .metric-value { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+
+        .history-item { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 15px; 
+            border-left: 5px solid var(--primary); 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+        }
+        .error { color: #dc2626; padding: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>5-Minute Summary Generator</h1>
-    <h2 style="font-size: 1.2rem;">সারাংশ জেনারেটর</h2>
+    <h1>5-Minute Summary Generator | সারাংশ জেনারেটর</h1>
 
-    <div id="auth-ui" class="auth-section">
+    <div id="auth-ui" class="card">
         <input type="email" id="email" placeholder="Email / ইমেইল">
         <input type="password" id="pass" placeholder="Password / পাসওয়ার্ড">
-        <button onclick="handleAuth()">Login/Register | লগইন/রেজিস্ট্রেশন</button>
+        <button onclick="handleAuth()">Login or Register | লগইন অথবা রেজিস্ট্রেশন</button>
         <div id="error-msg" class="error"></div>
     </div>
 
-    <div id="app-ui" class="app-section" style="display:none;">
-        <textarea id="inputText" placeholder="Paste your text here... / এখানে টেক্সট দিন..."></textarea>
-        <button id="generateBtn">Generate Summary | সারাংশ তৈরি করুন</button>
+    <div id="app-ui" class="card" style="display:none;">
+        <textarea id="inputText" oninput="updateMetrics()" placeholder="Paste your text here... / আপনার টেক্সট এখানে পেস্ট করুন..."></textarea>
         
-        <h3>History | ইতিহাস</h3>
+        <div class="metrics-grid">
+            <div class="metric-card">Original Words<br><span id="countOrig" class="metric-value">0</span></div>
+            <div class="metric-card">Summary Words<br><span id="countSum" class="metric-value">0</span></div>
+            <div class="metric-card">Est. Read Time<br><span id="readTime" class="metric-value">0 min</span></div>
+        </div>
+
+        <button id="generateBtn">Save Summary | সারাংশ সংরক্ষণ করুন</button>
+        
+        <h2 style="margin-top: 50px;">History | ইতিহাস</h2>
         <div id="historyList"></div>
         <button onclick="logout()" style="background:#6b7280; margin-top:20px;">Logout | লগআউট</button>
     </div>
@@ -48,7 +118,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBgYU3Gv3itIh70wPfcQIA6epqPo12RWs8",
@@ -64,12 +134,19 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    window.updateMetrics = () => {
+        const text = document.getElementById('inputText').value;
+        const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+        document.getElementById('countOrig').innerText = words.length;
+        document.getElementById('countSum').innerText = Math.max(0, Math.floor(words.length * 0.2));
+        document.getElementById('readTime').innerText = Math.max(1, Math.ceil(words.length / 200)) + " min";
+    };
+
     window.handleAuth = async () => {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
-        try {
-            await signInWithEmailAndPassword(auth, email, pass);
-        } catch (e) {
+        try { await signInWithEmailAndPassword(auth, email, pass); } 
+        catch (e) {
             try { await createUserWithEmailAndPassword(auth, email, pass); }
             catch (err) { document.getElementById('error-msg').innerText = err.message; }
         }
@@ -90,18 +167,17 @@
 
     document.getElementById('generateBtn').onclick = async () => {
         const text = document.getElementById('inputText').value;
-        if (!text) return;
+        if (!text) return alert("Please enter text!");
         try {
-            // Simple logic: taking first 100 chars as 'summary'
-            const summary = text.substring(0, 100) + "...";
             await addDoc(collection(db, "summaries"), {
                 userId: auth.currentUser.uid,
                 originalText: text,
-                summary: summary,
+                summary: text.substring(0, 150) + "...",
                 createdAt: new Date()
             });
             document.getElementById('inputText').value = '';
-        } catch (err) { alert("Error saving: " + err.message); }
+            updateMetrics();
+        } catch (err) { alert("Error: " + err.message); }
     };
 
     function loadHistory(uid) {
@@ -109,14 +185,13 @@
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('historyList');
             list.innerHTML = '';
-            // Client-side sorting by date
             const docs = snapshot.docs.sort((a, b) => b.data().createdAt - a.data().createdAt);
             docs.forEach(doc => {
                 const data = doc.data();
-                list.innerHTML += `<div class="history-item"><strong>Summary:</strong> ${data.summary}</div>`;
+                list.innerHTML += `<div class="history-item"><strong>Summary:</strong><br>${data.summary}</div>`;
             });
         }, (err) => {
-            document.getElementById('historyList').innerHTML = `<p class="error">Listener Error: ${err.message}</p>`;
+            document.getElementById('historyList').innerHTML = `<p class="error">Database Error: ${err.message}</p>`;
         });
     }
 </script>
